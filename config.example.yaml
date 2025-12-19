@@ -1,11 +1,16 @@
-# Amp Free Proxy Configuration
+# Free Proxy Configuration
 
 # Port to listen on (default: 8318)
 port: 8318
 
 # Upstream URL (default: https://ampcode.com)
-# Use http://127.0.0.1:8317 if you want to go through CLIProxyAPI first
 upstream: "http://127.0.0.1:8317"
+
+# Enable free tier for web_search and read_web_page (default: true)
+enable-free-search: true
+
+# Enable model mapping (default: true)
+enable-model-mapping: true
 
 # Model mappings - redirect specific models to free tier haiku
 # When a request uses the "from" model, it will be replaced with the "to" model

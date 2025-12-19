@@ -30,9 +30,11 @@ var isFreeTierRequestRegex = regexp.MustCompile(`"isFreeTierRequest"\s*:\s*false
 
 // Config represents the configuration file structure
 type Config struct {
-	Port          int            `yaml:"port"`
-	Upstream      string         `yaml:"upstream"`
-	ModelMappings []ModelMapping `yaml:"model-mappings"`
+	Port               int            `yaml:"port"`
+	Upstream           string         `yaml:"upstream"`
+	EnableFreeSearch   bool           `yaml:"enable-free-search"`
+	EnableModelMapping bool           `yaml:"enable-model-mapping"`
+	ModelMappings      []ModelMapping `yaml:"model-mappings"`
 }
 
 // ModelMapping represents a model redirection rule
@@ -61,6 +63,8 @@ func main() {
 
 	// Load config file (default: config.yaml in current directory)
 	var modelMappings []ModelMapping
+	enableFreeSearch := true
+	enableModelMapping := true
 	if _, err := os.Stat(*configFile); err == nil {
 		cfg, err := loadConfig(*configFile)
 		if err != nil {
@@ -72,6 +76,8 @@ func main() {
 		if cfg.Upstream != "" {
 			*upstream = cfg.Upstream
 		}
+		enableFreeSearch = cfg.EnableFreeSearch
+		enableModelMapping = cfg.EnableModelMapping
 		modelMappings = cfg.ModelMappings
 	}
 
@@ -105,7 +111,7 @@ func main() {
 		path := req.URL.Path
 
 		// Intercept webSearch2 and extractWebPageContent requests
-		if path == internalAPIPath && (query == webSearchQuery || query == extractWebPageContentQuery) && req.Body != nil {
+		if enableFreeSearch && path == internalAPIPath && (query == webSearchQuery || query == extractWebPageContentQuery) && req.Body != nil {
 			bodyBytes, err := io.ReadAll(req.Body)
 			if err != nil {
 				log.Printf("Warning: could not read request body for %s: %v", query, err)
@@ -122,7 +128,7 @@ func main() {
 		}
 
 		// Intercept Anthropic messages and apply model mapping
-		if path == anthropicMessagesPath && req.Body != nil && len(modelMap) > 0 {
+		if enableModelMapping && path == anthropicMessagesPath && req.Body != nil && len(modelMap) > 0 {
 			bodyBytes, err := io.ReadAll(req.Body)
 			if err != nil {
 				log.Printf("Warning: could not read request body for anthropic messages: %v", err)
@@ -156,9 +162,11 @@ func main() {
 	}
 
 	addr := fmt.Sprintf(":%d", *port)
-	log.Printf("Amp Free Proxy listening on %s, forwarding to %s", addr, *upstream)
-	log.Printf("Configure Amp CLI upstream to: http://127.0.0.1:%d", *port)
-	if len(modelMappings) > 0 {
+	log.Printf("Free Proxy listening on %s, forwarding to %s", addr, *upstream)
+	log.Printf("Configure upstream to: http://127.0.0.1:%d", *port)
+	log.Printf("Free search enabled: %v", enableFreeSearch)
+	log.Printf("Model mapping enabled: %v", enableModelMapping)
+	if enableModelMapping && len(modelMappings) > 0 {
 		log.Printf("Loaded %d model mapping(s)", len(modelMappings))
 	}
 
