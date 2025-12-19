@@ -1,0 +1,27 @@
+# Amp Free Proxy Configuration
+
+# Port to listen on (default: 8318)
+port: 8318
+
+# Upstream URL (default: https://ampcode.com)
+# Use http://127.0.0.1:8317 if you want to go through CLIProxyAPI first
+upstream: "http://127.0.0.1:8317"
+
+# Model mappings - redirect specific models to free tier haiku
+# When a request uses the "from" model, it will be replaced with the "to" model
+# and X-Amp-Mode header will be set to "free"
+model-mappings:
+  # Example: redirect opus to haiku
+  #- from: "claude-opus-4-5-20251101"
+  #  to: "claude-haiku-4-5-20251001"
+
+  - from: "claude-haiku-4-5-20251001"
+    to: "claude-haiku-4-5-20251001"
+
+  # Example: redirect sonnet to haiku
+  #- from: "claude-sonnet-4-20250514"
+  #  to: "claude-haiku-4-5-20251001"
+  
+  # Add more mappings as needed
+  # - from: "some-expensive-model"
+  #   to: "claude-haiku-4-5-20251001"
