@@ -6,6 +6,11 @@ port: 8318
 # Upstream URL (default: https://ampcode.com)
 upstream: "http://127.0.0.1:8317"
 
+# Proxy URL for upstream requests (optional)
+# Use this to route traffic through a proxy like Reqable for debugging
+# Example: "http://127.0.0.1:8000" (Reqable default port)
+# proxy-url: "http://127.0.0.1:8000"
+
 # Enable free tier for web_search and read_web_page (default: true)
 enable-free-search: true
 

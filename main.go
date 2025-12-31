@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -32,6 +33,7 @@ var isFreeTierRequestRegex = regexp.MustCompile(`"isFreeTierRequest"\s*:\s*false
 type Config struct {
 	Port               int            `yaml:"port"`
 	Upstream           string         `yaml:"upstream"`
+	ProxyURL           string         `yaml:"proxy-url"`
 	EnableFreeSearch   bool           `yaml:"enable-free-search"`
 	EnableModelMapping bool           `yaml:"enable-model-mapping"`
 	ModelMappings      []ModelMapping `yaml:"model-mappings"`
@@ -58,6 +60,7 @@ func loadConfig(path string) (*Config, error) {
 func main() {
 	port := flag.Int("port", defaultPort, "Port to listen on")
 	upstream := flag.String("upstream", defaultUpstream, "Upstream URL")
+	proxyURL := flag.String("proxy", "", "Proxy URL for upstream requests (e.g., http://127.0.0.1:8000)")
 	configFile := flag.String("config", "config.yaml", "Path to config file (YAML)")
 	flag.Parse()
 
@@ -75,6 +78,9 @@ func main() {
 		}
 		if cfg.Upstream != "" {
 			*upstream = cfg.Upstream
+		}
+		if cfg.ProxyURL != "" {
+			*proxyURL = cfg.ProxyURL
 		}
 		enableFreeSearch = cfg.EnableFreeSearch
 		enableModelMapping = cfg.EnableModelMapping
@@ -94,6 +100,25 @@ func main() {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(upstreamURL)
+
+	// Configure transport with connection pool settings
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+	}
+
+	if *proxyURL != "" {
+		parsedProxyURL, err := url.Parse(*proxyURL)
+		if err != nil {
+			log.Fatalf("Invalid proxy URL: %v", err)
+		}
+		transport.Proxy = http.ProxyURL(parsedProxyURL)
+		log.Printf("Using proxy: %s", *proxyURL)
+	}
+
+	proxy.Transport = transport
+	
 	originalDirector := proxy.Director
 
 	// Suppress context canceled errors (normal for streaming/SSE)
@@ -170,7 +195,13 @@ func main() {
 		log.Printf("Loaded %d model mapping(s)", len(modelMappings))
 	}
 
-	if err := http.ListenAndServe(addr, proxy); err != nil {
+	server := &http.Server{
+		Addr:        addr,
+		Handler:     proxy,
+		IdleTimeout: 120 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }
